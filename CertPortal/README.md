@@ -1,4 +1,4 @@
-# CMS Certificate Portal
+# WR Certificate Portal
 
 Self-contained FastAPI app that replaces the separate "WR CERT" (Competency),
 "WR AW CERT" (Awareness), and "Workshop Cert" Qualtrics templates with a single

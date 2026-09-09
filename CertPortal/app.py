@@ -1,5 +1,5 @@
 """
-CMS Certificate Portal
+WR Certificate Portal
 ----------------------
 Reads all course-completion data from ./Data/*.csv, lets a learner look up
 their email, and generates the same certificate design (previously split
@@ -31,7 +31,7 @@ CLP_XLSX_PATH = DATA_DIR / "Class and CLPs (1).xlsx"
 REGISTRATION_PATH = DATA_DIR / "Individual Learner Registrations.csv"
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-app = FastAPI(title="CMS Certificate Portal")
+app = FastAPI(title="WR Certificate Portal")
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET", "local-development-secret-change-me"),
