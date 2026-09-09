@@ -113,7 +113,7 @@
               <td>{{ c.offering or c.track }}{% if c.level %} &mdash; {{ c.level }}{% endif %}</td>
               <td>{{ c.season }} {{ c.session }}</td>
               <td>{{ c.date }}</td>
-              <td><a class="link" href="/certificate/pdf?email={{ email_q }}&idx={{ c.idx }}">Download PDF</a></td>
+              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -144,7 +144,7 @@
               <td>{{ c.offering }}</td>
               <td>{{ c.season }} {{ c.session }}</td>
               <td>{{ c.date }}</td>
-              <td><a class="link" href="/certificate/pdf?email={{ email_q }}&idx={{ c.idx }}">Download PDF</a></td>
+              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a></td>
             </tr>
             {% endfor %}
           </tbody>

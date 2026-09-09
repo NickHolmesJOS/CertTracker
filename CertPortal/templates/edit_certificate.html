@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Edit Certificate - CMS Certificate Portal{% endblock %}
+{% block style %}
+  .edit-card {
+    max-width: 760px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #dce4ee;
+    border-top: 8px solid #225E9F;
+    border-radius: 14px;
+    padding: 2.25em 2.5em;
+    box-shadow: 0 8px 24px rgba(34, 94, 159, 0.08);
+  }
+  .edit-card h1 { color: #225E9F; font-size: 24px; margin: 0 0 .25em; }
+  .edit-card .intro { color: #5b6b7d; font-size: 14px; margin-bottom: 1.5em; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1em 1.25em; }
+  .field { display: flex; flex-direction: column; gap: .35em; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { color: #33465c; font-size: 13px; font-weight: 600; }
+  .field input {
+    width: 100%; padding: .65em .75em; border: 1px solid #cdd7e3; border-radius: 7px;
+    font: inherit; font-size: 14px; outline: none;
+  }
+  .field input:focus { border-color: #225E9F; box-shadow: 0 0 0 3px rgba(34, 94, 159, .1); }
+  .actions { display: flex; gap: .75em; flex-wrap: wrap; margin-top: 1.75em; }
+  .btn {
+    padding: .65em 1.2em; font-size: 14px; font-weight: 600; border-radius: 7px;
+    cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .btn.primary { background: #225E9F; color: #fff; border: 1px solid #225E9F; }
+  .btn.primary:hover { background: #184873; }
+  .btn.secondary { background: #fff; color: #225E9F; border: 1px solid #225E9F; }
+  .btn.secondary:hover { background: #eef4fb; }
+  @media (max-width: 620px) { .fields { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .edit-card { padding: 1.5em; } }
+{% endblock %}
+{% block content %}
+<div class="edit-card">
+  <h1>Edit Certificate Details</h1>
+  <p class="intro">Review the information before generating this certificate. Changes apply only to this download and do not modify the source data.</p>
+  <form method="post" action="/certificate/pdf">
+    <input type="hidden" name="email" value="{{ email }}">
+    <input type="hidden" name="idx" value="{{ idx }}">
+    <div class="fields">
+      <div class="field">
+        <label for="name">Learner name</label>
+        <input id="name" name="name" value="{{ certificate.name }}" required>
+      </div>
+      <div class="field">
+        <label for="edited_email">Email</label>
+        <input id="edited_email" name="edited_email" type="email" value="{{ certificate.email }}" required>
+      </div>
+      <div class="field full">
+        <label for="offering">Offering</label>
+        <input id="offering" name="offering" value="{{ certificate.offering }}" required>
+      </div>
+      <div class="field">
+        <label for="track">Track</label>
+        <input id="track" name="track" value="{{ certificate.track }}">
+      </div>
+      <div class="field">
+        <label for="level">Level</label>
+        <input id="level" name="level" value="{{ certificate.level }}">
+      </div>
+      <div class="field">
+        <label for="season">Season</label>
+        <input id="season" name="season" value="{{ certificate.season }}">
+      </div>
+      <div class="field">
+        <label for="session">Session</label>
+        <input id="session" name="session" value="{{ certificate.session }}">
+      </div>
+      <div class="field">
+        <label for="pillar">Pillar</label>
+        <input id="pillar" name="pillar" value="{{ certificate.pillar }}">
+      </div>
+      <div class="field">
+        <label for="clps">CLPs awarded</label>
+        <input id="clps" name="clps" value="{{ certificate.clps }}" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input id="date" name="date" value="{{ certificate.date }}">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Generate &amp; Download PDF</button>
+      <a class="btn secondary" href="/search">Back to Email Search</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

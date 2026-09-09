@@ -221,6 +221,30 @@ def build_certificate_context(row: pd.Series) -> dict:
     }
 
 
+EDITABLE_FIELDS = ["name", "email", "track", "level", "offering", "season", "session", "pillar", "clps", "date"]
+
+
+def apply_certificate_overrides(row: pd.Series, overrides: dict[str, str]) -> pd.Series:
+    edited = row.copy()
+    for field in EDITABLE_FIELDS:
+        value = overrides.get(field)
+        if value is not None:
+            edited[field] = value.strip()
+    return edited
+
+
+def safe_filename_part(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]+", "_", str(value or "")).strip("._")
+    return cleaned or fallback
+
+
+def certificate_filename(row: pd.Series, suffix: str = "") -> str:
+    learner = safe_filename_part(row.get("name"), "learner")
+    offering = safe_filename_part(row.get("offering") or row.get("track"), "certificate")
+    suffix_part = f"_{suffix}" if suffix else ""
+    return f"{learner}_{offering}{suffix_part}.pdf"
+
+
 def render_certificate_html(row: pd.Series) -> str:
     template = templates.get_template("certificate.html")
     return template.render(**build_certificate_context(row))
@@ -270,16 +294,57 @@ def search(request: Request, email: str = Form(...)):
     )
 
 
-@app.get("/certificate/pdf")
-def certificate_pdf(email: str = Query(...), idx: int = Query(...)):
+@app.get("/certificate/edit", response_class=HTMLResponse)
+def certificate_edit(request: Request, email: str = Query(...), idx: int = Query(...)):
+    courses_df = get_learner_courses(email)
+    if idx < 0 or idx >= len(courses_df):
+        return RedirectResponse("/search")
+    certificate = build_certificate_context(courses_df.iloc[idx])
+    return templates.TemplateResponse(
+        request,
+        "edit_certificate.html",
+        {"certificate": certificate, "email": email, "idx": idx, "active": "search"},
+    )
+
+
+@app.post("/certificate/pdf")
+def certificate_pdf(
+    email: str = Form(...),
+    idx: int = Form(...),
+    name: str | None = Form(None),
+    edited_email: str | None = Form(None),
+    track: str | None = Form(None),
+    level: str | None = Form(None),
+    offering: str | None = Form(None),
+    season: str | None = Form(None),
+    session: str | None = Form(None),
+    pillar: str | None = Form(None),
+    clps: str | None = Form(None),
+    date: str | None = Form(None),
+):
     courses_df = get_learner_courses(email)
     if idx < 0 or idx >= len(courses_df):
         return RedirectResponse("/")
 
     row = courses_df.iloc[idx]
+    row = apply_certificate_overrides(
+        row,
+        {
+            "name": name,
+            "email": edited_email,
+            "track": track,
+            "level": level,
+            "offering": offering,
+            "season": season,
+            "session": session,
+            "pillar": pillar,
+            "clps": clps,
+            "date": date,
+        },
+    )
     html = render_certificate_html(row)
     pdf_bytes = html_to_pdf_bytes(html)
-    filename = f"certificate_{row.get('track') or row.get('offering') or 'course'}.pdf".replace(" ", "_")
+    filename = certificate_filename(row)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
@@ -308,6 +373,7 @@ def download_track(email: str = Query(...), track: str = Query(...)):
 def _zip_response(email: str, idx_list: list[int], suffix: str = "") -> StreamingResponse:
     courses_df = get_learner_courses(email)
     buffer = io.BytesIO()
+    learner_name = courses_df.iloc[0].get("name", "") if not courses_df.empty else "learner"
 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for idx in idx_list:
@@ -316,12 +382,13 @@ def _zip_response(email: str, idx_list: list[int], suffix: str = "") -> Streamin
             row = courses_df.iloc[idx]
             html = render_certificate_html(row)
             pdf_bytes = html_to_pdf_bytes(html)
-            name = f"certificate_{idx}_{row.get('track') or row.get('offering') or 'course'}.pdf".replace(" ", "_")
-            zf.writestr(name, pdf_bytes)
+            filename = certificate_filename(row, str(idx + 1))
+            zf.writestr(filename, pdf_bytes)
 
     buffer.seek(0)
-    zip_name = f"certificates_{email}" + (f"_{suffix}" if suffix else "")
-    zip_name = zip_name.replace(" ", "_")
+    zip_name = f"{safe_filename_part(learner_name, 'learner')}_certificates"
+    if suffix:
+        zip_name += f"_{safe_filename_part(suffix, 'track')}"
     return StreamingResponse(
         buffer,
         media_type="application/zip",
