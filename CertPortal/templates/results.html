@@ -13,6 +13,14 @@
   }
   .wrap h1 { color: #225E9F; font-size: 24px; margin: 0 0 .2em; }
   .subtitle { color: #5b6b7d; font-size: 14px; margin-bottom: 1.5em; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75em; margin: 1.25em 0 1.5em; }
+  .stat { background: #f4f8fc; border: 1px solid #e3e9f1; border-radius: 9px; padding: .85em 1em; }
+  .stat strong { display: block; color: #225E9F; font-size: 21px; }
+  .stat span { color: #6b7a8c; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
+  .filters { display: flex; flex-wrap: wrap; gap: .75em; margin-bottom: 1.25em; }
+  .filters input, .filters select { border: 1px solid #cdd7e3; border-radius: 7px; padding: .6em .75em; font: inherit; font-size: 13px; background: #fff; }
+  .filters input { flex: 1 1 220px; }
+  .filters select { flex: 0 1 240px; }
   .toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -69,11 +77,37 @@
   a.back { display: inline-block; margin-top: 1.75em; color: #225E9F; font-size: 14px; text-decoration: none; }
   a.back:hover { text-decoration: underline; }
   .empty { padding: 2em 0; text-align: center; color: #6b7a8c; }
+  .warning { color: #a15c00; font-size: 16px; margin-left: .35em; cursor: help; }
+  .edited { color: #2d7a4b; font-size: 12px; margin-left: .35em; }
+  .journey { margin-top: 2em; padding-top: 1.5em; border-top: 1px solid #e3e9f1; }
+  .journey h2 { color: #225E9F; font-size: 20px; margin: 0 0 .2em; }
+  .journey-intro { color: #5b6b7d; font-size: 13px; margin: 0 0 1em; }
+  .journey-canvas { overflow-x: auto; border: 1px solid #e3e9f1; border-radius: 10px; background: linear-gradient(135deg, #fbfdff, #f3f7fc); padding: .75em; }
+  #journey-svg { display: block; min-width: 720px; width: 100%; }
+  .journey-legend { display: flex; flex-wrap: wrap; gap: 1em; margin-top: .8em; color: #6b7a8c; font-size: 12px; }
+  .legend-item { display: inline-flex; align-items: center; gap: .35em; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  @media (max-width: 620px) { .summary { grid-template-columns: repeat(2, 1fr); } .wrap { padding: 1.5em; } }
 {% endblock %}
 {% block content %}
   <div class="wrap">
     <h1>Certificates for {{ email }}</h1>
     <p class="subtitle">{{ courses|length }} completed offering{{ 's' if courses|length != 1 else '' }} found.</p>
+
+    <div class="summary">
+      <div class="stat"><strong>{{ summary.certificates }}</strong><span>Certificates</span></div>
+      <div class="stat"><strong>{{ summary.tracks }}</strong><span>Tracks</span></div>
+      <div class="stat"><strong>{{ summary.clps }}</strong><span>Total CLPs</span></div>
+      <div class="stat"><strong>{{ summary.latest }}</strong><span>Latest completion</span></div>
+    </div>
+
+    <div class="filters">
+      <input id="offering-filter" type="search" placeholder="Filter offerings..." aria-label="Filter offerings">
+      <select id="track-filter" aria-label="Filter by track">
+        <option value="">All tracks</option>
+        {% for track in tracks %}<option value="{{ track }}">{{ track }}</option>{% endfor %}
+      </select>
+    </div>
 
     {% if courses %}
     <form method="post" action="/download">
@@ -88,7 +122,7 @@
       </div>
 
       {% for track in tracks %}
-      <div class="track-group">
+      <div class="track-group" data-track-group="{{ track }}">
         <div class="track-header">
           <div class="track-title">
             {{ track }}
@@ -108,12 +142,12 @@
           </thead>
           <tbody>
             {% for c in courses if c.track == track %}
-            <tr>
+            <tr data-offering="{{ c.offering }}">
               <td><input type="checkbox" name="idx" value="{{ c.idx }}" class="course-check"></td>
               <td>{{ c.offering or c.track }}{% if c.level %} &mdash; {{ c.level }}{% endif %}</td>
               <td>{{ c.season }} {{ c.session }}</td>
               <td>{{ c.date }}</td>
-              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a></td>
+              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a>{% if c.warnings %}<span class="warning" title="Missing or incomplete: {{ c.warnings|join(', ') }}" aria-label="Missing or incomplete fields">&#9888;</span>{% endif %}{% if c.edited %}<span class="edited" title="Temporary edits saved">Edited</span>{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -123,13 +157,13 @@
 
       {% set untracked = courses|rejectattr("track")|list %}
       {% if untracked %}
-      <div class="track-group">
+      <div class="track-group" data-track-group="Other Offerings">
         <div class="track-header">
           <div class="track-title">Other Offerings</div>
         </div>
         <table>
           <thead>
-            <tr>
+            <tr data-offering="{{ c.offering }}">
               <th style="width:2em;"></th>
               <th>Offering</th>
               <th>Season / Session</th>
@@ -144,7 +178,7 @@
               <td>{{ c.offering }}</td>
               <td>{{ c.season }} {{ c.session }}</td>
               <td>{{ c.date }}</td>
-              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a></td>
+              <td><a class="link" href="/certificate/edit?email={{ email_q }}&idx={{ c.idx }}">Edit &amp; Download</a>{% if c.warnings %}<span class="warning" title="Missing or incomplete: {{ c.warnings|join(', ') }}" aria-label="Missing or incomplete fields">&#9888;</span>{% endif %}{% if c.edited %}<span class="edited" title="Temporary edits saved">Edited</span>{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -156,6 +190,21 @@
     <p class="empty">No completed courses were found for this email address.</p>
     {% endif %}
 
+    {% if journey %}
+    <section class="journey" aria-labelledby="journey-title">
+      <h2 id="journey-title">Learner Journey</h2>
+      <p class="journey-intro">Offerings are shown chronologically. Multiple completions in the same month are stacked together.</p>
+      <div class="journey-canvas">
+        <svg id="journey-svg" role="img" aria-label="Learner completion journey"></svg>
+      </div>
+      <div class="journey-legend" aria-hidden="true">
+        <span class="legend-item"><span class="legend-dot" style="background:#225E9F"></span>Awareness</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#2D7A4B"></span>Competency</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#A15C00"></span>Workshop</span>
+      </div>
+    </section>
+    {% endif %}
+
     <a class="back" href="/search">&larr; Search another email</a>
   </div>
 
@@ -163,6 +212,82 @@
     document.getElementById('select-all')?.addEventListener('change', function () {
       document.querySelectorAll('.course-check').forEach(cb => cb.checked = this.checked);
     });
+    const trackFilter = document.getElementById('track-filter');
+    const offeringFilter = document.getElementById('offering-filter');
+    function filterCertificates() {
+      const track = trackFilter.value.toLowerCase();
+      const offering = offeringFilter.value.toLowerCase();
+      document.querySelectorAll('[data-track-group]').forEach(group => {
+        const trackMatches = !track || group.dataset.trackGroup.toLowerCase() === track;
+        let visibleRows = 0;
+        group.querySelectorAll('tbody tr').forEach(row => {
+          const matches = trackMatches && (!offering || row.dataset.offering.toLowerCase().includes(offering));
+          row.hidden = !matches;
+          if (matches) visibleRows += 1;
+        });
+        group.hidden = visibleRows === 0;
+      });
+    }
+    trackFilter?.addEventListener('change', filterCertificates);
+    offeringFilter?.addEventListener('input', filterCertificates);
+
+    const journey = {{ journey|tojson }};
+    const journeySvg = document.getElementById('journey-svg');
+    if (journeySvg && journey.length) {
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const nodeWidth = 184;
+      const columnGap = 62;
+      const nodeHeight = 42;
+      const nodeGap = 12;
+      const width = Math.max(720, journey.length * (nodeWidth + columnGap));
+      const tallest = Math.max(...journey.map(group => group.items.length));
+      const height = Math.max(300, tallest * (nodeHeight + nodeGap) + 120);
+      journeySvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      journeySvg.setAttribute('height', height);
+
+      const colors = { Awareness: '#225E9F', Competency: '#2D7A4B', Workshop: '#A15C00' };
+      const positions = [];
+      const make = (tag, attrs) => {
+        const element = document.createElementNS(svgNS, tag);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+      };
+      journey.forEach((group, groupIndex) => {
+        const x = 20 + groupIndex * (nodeWidth + columnGap);
+        const groupHeight = group.items.length * nodeHeight + (group.items.length - 1) * nodeGap;
+        const startY = (height - groupHeight) / 2 + 18;
+        const label = make('text', { x: x + nodeWidth / 2, y: 22, 'text-anchor': 'middle', fill: '#33465c', 'font-size': '13', 'font-weight': '700' });
+        label.textContent = group.label;
+        journeySvg.appendChild(label);
+        positions[groupIndex] = [];
+        group.items.forEach((item, itemIndex) => {
+          const y = startY + itemIndex * (nodeHeight + nodeGap);
+          positions[groupIndex].push({ x, y });
+          const color = colors[item.pillar] || '#225E9F';
+          const rect = make('rect', { x, y, width: nodeWidth, height: nodeHeight, rx: 7, fill: '#fff', stroke: color, 'stroke-width': 2 });
+          const title = make('title', {});
+          title.textContent = `${item.offering} - ${item.track || item.pillar}`;
+          rect.appendChild(title);
+          journeySvg.appendChild(rect);
+          const text = make('text', { x: x + 10, y: y + 18, fill: '#151515', 'font-size': '11', 'font-weight': '600' });
+          text.textContent = item.offering.length > 27 ? `${item.offering.slice(0, 26)}...` : item.offering;
+          journeySvg.appendChild(text);
+          const subtext = make('text', { x: x + 10, y: y + 33, fill: color, 'font-size': '10' });
+          subtext.textContent = item.pillar;
+          journeySvg.appendChild(subtext);
+        });
+      });
+      for (let groupIndex = 0; groupIndex < positions.length - 1; groupIndex += 1) {
+        positions[groupIndex].forEach((from, fromIndex) => {
+          const targets = positions[groupIndex + 1];
+          const target = targets[Math.min(fromIndex, targets.length - 1)];
+          const startX = from.x + nodeWidth;
+          const endX = target.x;
+          const path = make('path', { d: `M ${startX} ${from.y + nodeHeight / 2} C ${startX + columnGap / 2} ${from.y + nodeHeight / 2}, ${endX - columnGap / 2} ${target.y + nodeHeight / 2}, ${endX} ${target.y + nodeHeight / 2}`, fill: 'none', stroke: '#9bb2ca', 'stroke-width': 3, opacity: '.65' });
+          journeySvg.insertBefore(path, journeySvg.firstChild);
+        });
+      }
+    }
   </script>
 {% endblock %}
 

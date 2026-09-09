@@ -37,7 +37,7 @@
 <div class="edit-card">
   <h1>Edit Certificate Details</h1>
   <p class="intro">Review the information before generating this certificate. Changes apply only to this download and do not modify the source data.</p>
-  <form method="post" action="/certificate/pdf">
+  <form method="post" action="/certificate/preview">
     <input type="hidden" name="email" value="{{ email }}">
     <input type="hidden" name="idx" value="{{ idx }}">
     <div class="fields">
@@ -56,10 +56,6 @@
       <div class="field">
         <label for="track">Track</label>
         <input id="track" name="track" value="{{ certificate.track }}">
-      </div>
-      <div class="field">
-        <label for="level">Level</label>
-        <input id="level" name="level" value="{{ certificate.level }}">
       </div>
       <div class="field">
         <label for="season">Season</label>
@@ -83,7 +79,7 @@
       </div>
     </div>
     <div class="actions">
-      <button class="btn primary" type="submit">Generate &amp; Download PDF</button>
+      <button class="btn primary" type="submit">Review Certificate</button>
       <a class="btn secondary" href="/search">Back to Email Search</a>
     </div>
   </form>
