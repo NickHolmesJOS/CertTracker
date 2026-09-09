@@ -59,13 +59,11 @@ templates or Python code.
 
 ## How it works
 
-- `app.py` loads every CSV in `Data/` at startup and normalizes the columns
-  using the `COLUMN_ALIASES` map at the top of the file. Update that map if
-  your export uses different header names than the ones already listed.
-- A learner enters their email on the home page (`/`).
-- `/search` looks up every completed offering for that email and lists them,
-  each with an individual "Download" link plus checkboxes for a bulk
-  download.
+ `app.py` uses `Data/Individual Learner Registrations.csv` as the source of
+  truth and normalizes its columns using the `COLUMN_ALIASES` map at the top
+  of the file. Every non-empty registration is shown in the learner journey,
+  including dropped registrations; only rows with `Completed=true` generate
+  certificates.
 - `/certificate/pdf` renders `templates/certificate.html` with that row's
   data and converts it to a PDF (via `xhtml2pdf`) for download.
 - `/download` (selected rows) and `/certificates/zip` (all rows) return a

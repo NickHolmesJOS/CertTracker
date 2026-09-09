@@ -28,6 +28,7 @@ from xhtml2pdf import pisa
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "Data"
 CLP_XLSX_PATH = DATA_DIR / "Class and CLPs (1).xlsx"
+REGISTRATION_PATH = DATA_DIR / "Individual Learner Registrations.csv"
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(title="CMS Certificate Portal")
@@ -116,8 +117,38 @@ def load_data() -> pd.DataFrame:
     return combined.reset_index(drop=True)
 
 
-DATA = load_data()
-LEARNER_EMAILS = sorted(DATA["email"].dropna().astype(str).str.strip().unique(), key=str.casefold)
+def load_registrations() -> pd.DataFrame:
+    if not REGISTRATION_PATH.exists():
+        return pd.DataFrame(columns=[*COLUMN_ALIASES.keys(), "completed", "dropped"])
+    raw = pd.read_csv(REGISTRATION_PATH, dtype=str, keep_default_na=False)
+    column_map = {}
+    for canonical, aliases in COLUMN_ALIASES.items():
+        found = _find_column(raw, aliases)
+        if found:
+            column_map[found] = canonical
+    for canonical, aliases in {
+        "completed": ["Completed"],
+        "dropped": ["Dropped"],
+    }.items():
+        found = _find_column(raw, aliases)
+        if found:
+            column_map[found] = canonical
+    registrations = raw.rename(columns=column_map)
+    for canonical in [*COLUMN_ALIASES.keys(), "completed", "dropped"]:
+        if canonical not in registrations.columns:
+            registrations[canonical] = ""
+    registrations = registrations[[*COLUMN_ALIASES.keys(), "completed", "dropped"]]
+    registrations["email"] = registrations["email"].str.strip().str.lower()
+    registrations = registrations[registrations["email"] != ""]
+    return registrations.reset_index(drop=True)
+
+
+REGISTRATIONS = load_registrations()
+DATA = REGISTRATIONS[REGISTRATIONS["completed"].str.upper() == "TRUE"].copy()
+LEARNER_EMAILS = sorted(
+    set(REGISTRATIONS["email"].dropna().astype(str).str.strip()),
+    key=str.casefold,
+)
 
 
 def _normalize_offering(text: str) -> str:
@@ -210,11 +241,15 @@ def completion_sort_value(row: pd.Series) -> tuple[int, int, str]:
 
 
 def infer_pillar(row: pd.Series) -> str:
+    explicit = str(row.get("pillar", "")).strip()
+    if explicit:
+        normalized = explicit.lower()
+        if normalized in {"awareness", "competency", "workshop"}:
+            return normalized.title()
     offering = str(row.get("offering", "")).strip().lower()
-    existing = str(row.get("pillar", "")).strip().lower()
-    if "awareness" in offering or existing == "awareness":
+    if "awareness" in offering:
         return "Awareness"
-    if "competency" in offering or existing == "competency":
+    if "competency" in offering:
         return "Competency"
     return "Workshop"
 
@@ -242,6 +277,14 @@ def get_learner_courses(email: str) -> pd.DataFrame:
     subset = subset.sort_values(by="_completion_sort", ascending=False, kind="stable")
     subset = subset.drop(columns=["_completion_sort"])
     return subset.reset_index(drop=True)
+
+
+def get_learner_registrations(email: str) -> pd.DataFrame:
+    email = email.strip().lower()
+    subset = REGISTRATIONS[REGISTRATIONS["email"] == email].copy()
+    subset["_completion_sort"] = subset.apply(completion_sort_value, axis=1)
+    subset = subset.sort_values(by="_completion_sort", ascending=True, kind="stable")
+    return subset.drop(columns=["_completion_sort"]).reset_index(drop=True)
 
 
 def build_certificate_context(row: pd.Series) -> dict:
@@ -351,6 +394,31 @@ def build_journey(courses: list[dict]) -> list[dict]:
     return sorted(groups.values(), key=lambda group: (group["key"] == "unknown", group["key"]))
 
 
+def build_registration_context(row: pd.Series) -> dict:
+    context = build_certificate_context(row)
+    context["completed"] = str(row.get("completed", "")).strip().lower() == "true"
+    context["status"] = "Completed" if context["completed"] else "Registered"
+    return context
+
+
+def build_registration_journey(registrations: list[dict]) -> list[dict]:
+    groups: dict[str, dict] = {}
+    for registration in registrations:
+        key, label = journey_month_key(registration["date"])
+        group = groups.setdefault(key, {"key": key, "label": label, "items": []})
+        group["items"].append(
+            {
+                "offering": registration["offering"] or registration["track"] or "Unnamed offering",
+                "track": registration["track"],
+                "pillar": registration["pillar"],
+                "date": registration["date"] or "Date unavailable",
+                "completed": registration["completed"],
+                "status": registration["status"],
+            }
+        )
+    return sorted(groups.values(), key=lambda group: (group["key"] == "unknown", group["key"]))
+
+
 def render_certificate_html(row: pd.Series) -> str:
     template = templates.get_template("certificate.html")
     return template.render(**build_certificate_context(row))
@@ -412,11 +480,26 @@ def search(request: Request, email: str = Form(...)):
         "latest": next((c["date"] for c in courses if c["date"]), "Not available"),
     }
     journey = build_journey(courses)
+    registration_rows = [
+        build_registration_context(row)
+        for _, row in get_learner_registrations(email).iterrows()
+    ]
+    registration_journey = build_registration_journey(registration_rows)
 
     return templates.TemplateResponse(
         request,
         "results.html",
-        {"email": email, "email_q": email, "courses": courses, "tracks": tracks, "summary": summary, "journey": journey, "active": "search"},
+        {
+            "email": email,
+            "email_q": email,
+            "courses": courses,
+            "tracks": tracks,
+            "summary": summary,
+            "journey": journey,
+            "registrations": registration_rows,
+            "registration_journey": registration_journey,
+            "active": "search",
+        },
     )
 
 

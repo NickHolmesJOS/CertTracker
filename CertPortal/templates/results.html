@@ -87,6 +87,13 @@
   .journey-legend { display: flex; flex-wrap: wrap; gap: 1em; margin-top: .8em; color: #6b7a8c; font-size: 12px; }
   .legend-item { display: inline-flex; align-items: center; gap: .35em; }
   .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .registration-table { margin-top: 2em; padding-top: 1.5em; border-top: 1px solid #e3e9f1; }
+  .registration-table h2 { color: #225E9F; font-size: 20px; margin: 0 0 .2em; }
+  .registration-table p { color: #5b6b7d; font-size: 13px; }
+  .status { display: inline-flex; align-items: center; gap: .35em; font-weight: 700; font-size: 12px; }
+  .status.completed { color: #2D7A4B; }
+  .status.registered { color: #A15C00; }
+  .status-mark { font-size: 17px; line-height: 1; }
   @media (max-width: 620px) { .summary { grid-template-columns: repeat(2, 1fr); } .wrap { padding: 1.5em; } }
 {% endblock %}
 {% block content %}
@@ -205,6 +212,46 @@
     </section>
     {% endif %}
 
+    {% if registrations %}
+    <section class="registration-table" aria-labelledby="registration-title">
+      <h2 id="registration-title">All Learner Registrations</h2>
+      <p>This includes offerings the learner registered for, whether or not they completed them.</p>
+      <table>
+        <thead>
+          <tr><th>Offering</th><th>Track</th><th>Pillar</th><th>When</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for registration in registrations %}
+          <tr>
+            <td>{{ registration.offering or registration.track }}</td>
+            <td>{{ registration.track }}</td>
+            <td>{{ registration.pillar }}</td>
+            <td>{{ registration.date }}</td>
+            <td>
+              {% if registration.completed %}<span class="status completed"><span class="status-mark">&#10003;</span> Completed</span>
+              {% else %}<span class="status registered"><span class="status-mark">&#10005;</span> Registered</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    {% if registration_journey %}
+    <section class="journey" aria-labelledby="registration-journey-title">
+      <h2 id="registration-journey-title">Registration and Completion Journey</h2>
+      <p class="journey-intro">Every registration is shown chronologically. A checkmark means completed; an X means registered but not completed.</p>
+      <div class="journey-canvas">
+        <svg id="registration-journey-svg" role="img" aria-label="Learner registration and completion journey"></svg>
+      </div>
+      <div class="journey-legend" aria-hidden="true">
+        <span class="legend-item"><span class="legend-dot" style="background:#2D7A4B"></span>&#10003; Completed</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#A15C00"></span>&#10005; Registered, not completed</span>
+      </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
     <a class="back" href="/search">&larr; Search another email</a>
   </div>
 
@@ -285,6 +332,63 @@
           const endX = target.x;
           const path = make('path', { d: `M ${startX} ${from.y + nodeHeight / 2} C ${startX + columnGap / 2} ${from.y + nodeHeight / 2}, ${endX - columnGap / 2} ${target.y + nodeHeight / 2}, ${endX} ${target.y + nodeHeight / 2}`, fill: 'none', stroke: '#9bb2ca', 'stroke-width': 3, opacity: '.65' });
           journeySvg.insertBefore(path, journeySvg.firstChild);
+        });
+      }
+    }
+
+    const registrationJourney = {{ registration_journey|tojson }};
+    const registrationSvg = document.getElementById('registration-journey-svg');
+    if (registrationSvg && registrationJourney.length) {
+      const registrationSvgNS = 'http://www.w3.org/2000/svg';
+      const registrationNodeWidth = 184;
+      const registrationColumnGap = 62;
+      const registrationNodeHeight = 42;
+      const registrationNodeGap = 12;
+      const registrationWidth = Math.max(720, registrationJourney.length * (registrationNodeWidth + registrationColumnGap));
+      const registrationTallest = Math.max(...registrationJourney.map(group => group.items.length));
+      const registrationHeight = Math.max(300, registrationTallest * (registrationNodeHeight + registrationNodeGap) + 120);
+      registrationSvg.setAttribute('viewBox', `0 0 ${registrationWidth} ${registrationHeight}`);
+      registrationSvg.setAttribute('height', registrationHeight);
+      const registrationPositions = [];
+      const registrationMake = (tag, attrs) => {
+        const element = document.createElementNS(registrationSvgNS, tag);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+      };
+      registrationJourney.forEach((group, groupIndex) => {
+        const x = 20 + groupIndex * (registrationNodeWidth + registrationColumnGap);
+        const groupHeight = group.items.length * registrationNodeHeight + (group.items.length - 1) * registrationNodeGap;
+        const startY = (registrationHeight - groupHeight) / 2 + 18;
+        const label = registrationMake('text', { x: x + registrationNodeWidth / 2, y: 22, 'text-anchor': 'middle', fill: '#33465c', 'font-size': '13', 'font-weight': '700' });
+        label.textContent = group.label;
+        registrationSvg.appendChild(label);
+        registrationPositions[groupIndex] = [];
+        group.items.forEach((item, itemIndex) => {
+          const y = startY + itemIndex * (registrationNodeHeight + registrationNodeGap);
+          registrationPositions[groupIndex].push({ x, y });
+          const color = item.completed ? '#2D7A4B' : '#A15C00';
+          const mark = item.completed ? '\u2713' : '\u2715';
+          const rect = registrationMake('rect', { x, y, width: registrationNodeWidth, height: registrationNodeHeight, rx: 7, fill: '#fff', stroke: color, 'stroke-width': 2 });
+          const title = registrationMake('title', {});
+          title.textContent = `${mark} ${item.offering} - ${item.status}`;
+          rect.appendChild(title);
+          registrationSvg.appendChild(rect);
+          const text = registrationMake('text', { x: x + 10, y: y + 18, fill: '#151515', 'font-size': '11', 'font-weight': '600' });
+          text.textContent = item.offering.length > 26 ? `${item.offering.slice(0, 25)}...` : item.offering;
+          registrationSvg.appendChild(text);
+          const subtext = registrationMake('text', { x: x + 10, y: y + 33, fill: color, 'font-size': '10' });
+          subtext.textContent = `${mark} ${item.status}`;
+          registrationSvg.appendChild(subtext);
+        });
+      });
+      for (let groupIndex = 0; groupIndex < registrationPositions.length - 1; groupIndex += 1) {
+        registrationPositions[groupIndex].forEach((from, fromIndex) => {
+          const targets = registrationPositions[groupIndex + 1];
+          const target = targets[Math.min(fromIndex, targets.length - 1)];
+          const startX = from.x + registrationNodeWidth;
+          const endX = target.x;
+          const path = registrationMake('path', { d: `M ${startX} ${from.y + registrationNodeHeight / 2} C ${startX + registrationColumnGap / 2} ${from.y + registrationNodeHeight / 2}, ${endX - registrationColumnGap / 2} ${target.y + registrationNodeHeight / 2}, ${endX} ${target.y + registrationNodeHeight / 2}`, fill: 'none', stroke: '#b7c4d1', 'stroke-width': 3, opacity: '.65' });
+          registrationSvg.insertBefore(path, registrationSvg.firstChild);
         });
       }
     }
