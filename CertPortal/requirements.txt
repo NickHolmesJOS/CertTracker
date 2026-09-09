@@ -5,3 +5,4 @@ jinja2
 python-multipart
 xhtml2pdf
 openpyxl
+itsdangerous
