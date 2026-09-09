@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}CMS Certificate Portal - Home{% endblock %}
+{% block style %}
+  .hero {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .hero h1 { color: #225E9F; font-size: 34px; margin-bottom: .25em; }
+  .hero p.lead { color: #5b6b7d; font-size: 16px; max-width: 620px; margin: 0 auto 1.75em; }
+  .cta {
+    display: inline-block;
+    padding: .85em 2em;
+    font-size: 16px;
+    font-weight: 700;
+    background: #225E9F;
+    color: #fff;
+    border-radius: 9px;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(34, 94, 159, 0.25);
+    transition: background .15s ease;
+  }
+  .cta:hover { background: #184873; }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25em;
+    margin-top: 3em;
+  }
+  .feature {
+    background: #fff;
+    border: 1px solid #dce4ee;
+    border-top: 5px solid #225E9F;
+    border-radius: 12px;
+    padding: 1.5em;
+    text-align: left;
+    box-shadow: 0 6px 18px rgba(34, 94, 159, 0.06);
+  }
+  .feature h3 { color: #225E9F; font-size: 16px; margin: 0 0 .4em; }
+  .feature p { color: #5b6b7d; font-size: 13.5px; margin: 0; line-height: 1.5; }
+{% endblock %}
+{% block content %}
+<div class="hero">
+  <h1>Find and Download Your Certificates</h1>
+  <p class="lead">
+    Look up every learning offering you've completed by entering your email
+    address, then generate and download your certificates individually,
+    by track, or all at once.
+  </p>
+  <a class="cta" href="/search">Email Search &rarr;</a>
+
+  <div class="features">
+    <div class="feature">
+      <h3>Search by Email</h3>
+      <p>Enter your CMS email to instantly see every completed Track and Offering on record.</p>
+    </div>
+    <div class="feature">
+      <h3>Download Individually or in Bulk</h3>
+      <p>Grab a single certificate, a whole Track, your selection, or every certificate you've earned.</p>
+    </div>
+    <div class="feature">
+      <h3>Always Up To Date</h3>
+      <p>Certificates are generated on demand from the latest completion data, so they're always accurate.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

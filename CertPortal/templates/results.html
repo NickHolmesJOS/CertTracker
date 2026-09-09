@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Your Certificates - CMS Certificate Portal{% endblock %}
+{% block style %}
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #dce4ee;
+    border-top: 8px solid #225E9F;
+    border-radius: 14px;
+    padding: 2.25em 2.5em;
+    box-shadow: 0 8px 24px rgba(34, 94, 159, 0.08);
+  }
+  .wrap h1 { color: #225E9F; font-size: 24px; margin: 0 0 .2em; }
+  .subtitle { color: #5b6b7d; font-size: 14px; margin-bottom: 1.5em; }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    margin-bottom: 1.25em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #eaeef3;
+  }
+  .toolbar label { font-size: 14px; color: #333; display: flex; align-items: center; gap: .4em; }
+  .track-group {
+    border: 1px solid #e3e9f1;
+    border-radius: 10px;
+    margin-bottom: 1.25em;
+    overflow: hidden;
+  }
+  .track-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    background: #f4f8fc;
+    padding: .85em 1.1em;
+    flex-wrap: wrap;
+  }
+  .track-title { font-weight: bold; font-size: 15.5px; color: #225E9F; }
+  .track-title small { display: block; font-weight: normal; color: #6b7a8c; font-size: 12.5px; margin-top: .15em; }
+  .wrap table { width: 100%; border-collapse: collapse; }
+  .wrap th, .wrap td { text-align: left; padding: .65em 1.1em; border-bottom: 1px solid #eef1f5; font-size: 13.5px; }
+  .wrap th { color: #6b7a8c; font-weight: 600; text-transform: uppercase; font-size: 11.5px; letter-spacing: .03em; background: #fafbfd; }
+  .wrap tbody tr:hover { background: #f9fbfd; }
+  .wrap tbody tr:last-child td { border-bottom: none; }
+  .btn {
+    padding: .55em 1.15em;
+    font-size: 13.5px;
+    font-weight: 600;
+    background: #225E9F;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: background .15s ease;
+  }
+  .btn:hover { background: #184873; }
+  .btn.secondary { background: #fff; color: #225E9F; border: 1px solid #225E9F; }
+  .btn.secondary:hover { background: #eef4fb; }
+  .btn.small { padding: .4em .85em; font-size: 12.5px; }
+  .link { color: #225E9F; text-decoration: none; font-weight: 600; font-size: 13px; }
+  .link:hover { text-decoration: underline; }
+  .actions { margin-top: 1.5em; display: flex; gap: 1em; flex-wrap: wrap; }
+  a.back { display: inline-block; margin-top: 1.75em; color: #225E9F; font-size: 14px; text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+  .empty { padding: 2em 0; text-align: center; color: #6b7a8c; }
+{% endblock %}
+{% block content %}
+  <div class="wrap">
+    <h1>Certificates for {{ email }}</h1>
+    <p class="subtitle">{{ courses|length }} completed offering{{ 's' if courses|length != 1 else '' }} found.</p>
+
+    {% if courses %}
+    <form method="post" action="/download">
+      <input type="hidden" name="email" value="{{ email }}">
+
+      <div class="toolbar">
+        <label><input type="checkbox" id="select-all"> Select all offerings</label>
+        <div class="actions" style="margin-top:0;">
+          <button type="submit" class="btn secondary">Download Selected</button>
+          <a class="btn" href="/certificates/zip?email={{ email_q }}">Download All</a>
+        </div>
+      </div>
+
+      {% for track in tracks %}
+      <div class="track-group">
+        <div class="track-header">
+          <div class="track-title">
+            {{ track }}
+            <small>{{ courses|selectattr("track", "equalto", track)|list|length }} offering(s) in this track</small>
+          </div>
+          <a class="btn small secondary" href="/certificates/zip/track?email={{ email_q }}&track={{ track|urlencode }}">Download All in Track</a>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:2em;"></th>
+              <th>Offering</th>
+              <th>Season / Session</th>
+              <th>Date</th>
+              <th>Certificate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in courses if c.track == track %}
+            <tr>
+              <td><input type="checkbox" name="idx" value="{{ c.idx }}" class="course-check"></td>
+              <td>{{ c.offering or c.track }}{% if c.level %} &mdash; {{ c.level }}{% endif %}</td>
+              <td>{{ c.season }} {{ c.session }}</td>
+              <td>{{ c.date }}</td>
+              <td><a class="link" href="/certificate/pdf?email={{ email_q }}&idx={{ c.idx }}">Download PDF</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+
+      {% set untracked = courses|rejectattr("track")|list %}
+      {% if untracked %}
+      <div class="track-group">
+        <div class="track-header">
+          <div class="track-title">Other Offerings</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:2em;"></th>
+              <th>Offering</th>
+              <th>Season / Session</th>
+              <th>Date</th>
+              <th>Certificate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in untracked %}
+            <tr>
+              <td><input type="checkbox" name="idx" value="{{ c.idx }}" class="course-check"></td>
+              <td>{{ c.offering }}</td>
+              <td>{{ c.season }} {{ c.session }}</td>
+              <td>{{ c.date }}</td>
+              <td><a class="link" href="/certificate/pdf?email={{ email_q }}&idx={{ c.idx }}">Download PDF</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </form>
+    {% else %}
+    <p class="empty">No completed courses were found for this email address.</p>
+    {% endif %}
+
+    <a class="back" href="/search">&larr; Search another email</a>
+  </div>
+
+  <script>
+    document.getElementById('select-all')?.addEventListener('change', function () {
+      document.querySelectorAll('.course-check').forEach(cb => cb.checked = this.checked);
+    });
+  </script>
+{% endblock %}
+

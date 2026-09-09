@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Email Search - CMS Certificate Portal{% endblock %}
+{% block style %}
+  .card-wrap { display: flex; align-items: center; justify-content: center; }
+  .card {
+    background: #fff;
+    border: 1px solid #dce4ee;
+    border-top: 8px solid #225E9F;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(34, 94, 159, 0.1);
+    padding: 2.5em 3em;
+    width: 420px;
+    text-align: center;
+  }
+  .card h1 { color: #225E9F; font-size: 23px; margin-bottom: .3em; }
+  .card p { color: #5b6b7d; font-size: 14px; }
+  input[type=email] {
+    width: 100%; padding: .75em; font-size: 16px; box-sizing: border-box; margin-top: 1em;
+    border: 1px solid #cdd7e3; border-radius: 8px; outline: none; transition: border-color .15s ease;
+  }
+  input[type=email]:focus { border-color: #225E9F; }
+  button {
+    margin-top: 1.25em; padding: .7em 1.75em; font-size: 15.5px; font-weight: 600;
+    background: #225E9F; color: #fff; border: none; border-radius: 8px; cursor: pointer;
+    transition: background .15s ease;
+  }
+  button:hover { background: #184873; }
+  .error { color: #b00020; margin-top: 1em; font-size: 13.5px; }
+{% endblock %}
+{% block content %}
+<div class="card-wrap">
+  <div class="card">
+    <h1>Find Your Certificates</h1>
+    <p>Enter the email address you used to register for CMS learning offerings.</p>
+    <form method="post" action="/search">
+      <input type="email" name="email" placeholder="you@cms.hhs.gov" required autofocus>
+      <br>
+      <button type="submit">Find My Certificates</button>
+    </form>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  </div>
+</div>
+{% endblock %}
+
